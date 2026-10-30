@@ -8,75 +8,38 @@
   <style>
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: #090d16;
-      color: #f4f5f8;
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #090d16; color: #f4f5f8;
+      font-family: Arial, sans-serif; padding: 20px;
     }
     .panel {
-      width: 100%;
-      max-width: 410px;
-      padding: 36px;
-      border: 1px solid #293247;
-      border-radius: 20px;
+      width: 100%; max-width: 410px; padding: 36px;
+      border: 1px solid #293247; border-radius: 20px;
       background: #111827;
     }
     .logo {
-      font-size: 27px;
-      font-weight: bold;
-      letter-spacing: 3px;
-      text-align: center;
+      font-size: 27px; font-weight: bold;
+      letter-spacing: 3px; text-align: center;
     }
-    .tagline {
-      color: #aab4c6;
-      text-align: center;
-      margin: 12px 0 30px;
-    }
+    .tagline { color: #aab4c6; text-align: center; margin: 12px 0 30px; }
     .tabs { display: flex; gap: 10px; margin-bottom: 24px; }
     button {
-      cursor: pointer;
-      border: 0;
-      border-radius: 9px;
-      padding: 13px;
-      font-size: 15px;
+      cursor: pointer; border: 0; border-radius: 9px;
+      padding: 13px; font-size: 15px;
     }
-    .tab {
-      flex: 1;
-      background: #202b3d;
-      color: white;
-    }
-    .tab.active, .submit {
-      background: #a78bfa;
-      color: #100d1d;
-      font-weight: bold;
-    }
+    .tab { flex: 1; background: #202b3d; color: white; }
+    .tab.active, .submit { background: #a78bfa; color: #100d1d; font-weight: bold; }
     label { display: block; margin: 16px 0 8px; color: #cbd5e1; }
     input {
-      width: 100%;
-      padding: 14px;
-      border-radius: 9px;
-      border: 1px solid #39465c;
-      background: #0b1220;
-      color: white;
-      font-size: 15px;
+      width: 100%; padding: 14px; border-radius: 9px;
+      border: 1px solid #39465c; background: #0b1220;
+      color: white; font-size: 15px;
     }
     .submit { width: 100%; margin-top: 24px; }
-    #message {
-      min-height: 24px;
-      color: #c4b5fd;
-      text-align: center;
-      margin-top: 18px;
-    }
-    .note {
-      color: #8995a8;
-      font-size: 12px;
-      text-align: center;
-      margin-top: 22px;
-    }
+    #message { min-height: 24px; color: #c4b5fd; text-align: center; margin-top: 18px; }
+    .note { color: #8995a8; font-size: 12px; text-align: center; margin-top: 22px; }
+    #account { display: none; text-align: center; }
+    #logout { background: #29364b; color: white; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -84,47 +47,119 @@
     <div class="logo">KAVORYN.ai</div>
     <p class="tagline">A space to think, feel and explore.</p>
 
-    <div class="tabs">
-      <button class="tab active" id="loginTab" type="button">Log in</button>
-      <button class="tab" id="signupTab" type="button">Sign up</button>
-    </div>
+    <section id="auth">
+      <div class="tabs">
+        <button class="tab active" id="loginTab" type="button">Log in</button>
+        <button class="tab" id="signupTab" type="button">Sign up</button>
+      </div>
 
-    <form id="authForm">
-      <label for="email">Email address</label>
-      <input id="email" type="email" placeholder="you@example.com" required>
+      <form id="authForm">
+        <label for="email">Email address</label>
+        <input id="email" type="email" placeholder="you@example.com" required>
 
-      <label for="password">Password</label>
-      <input id="password" type="password" placeholder="Enter your password" minlength="6" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="At least 6 characters" minlength="6" required>
 
-      <button class="submit" id="submitButton" type="submit">Log in</button>
-    </form>
+        <button class="submit" id="submitButton" type="submit">Log in</button>
+      </form>
+    </section>
 
-    <div id="message"></div>
+    <section id="account">
+      <h2>Welcome to Kavoryn!</h2>
+      <p id="userEmail"></p>
+      <p>Your account is connected.</p>
+      <button id="logout" type="button">Log out</button>
+    </section>
+
+    <div id="message" role="status"></div>
     <p class="note">Your personal AI companion. Your space. Your conversations.</p>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // Replace these two values with your own Supabase details.
+    const SUPABASE_URL = https://jiiotfipjjlqjeqkghpd.supabase.co/rest/v1/;
+    const SUPABASE_KEY = sb_publishable_MgpM2r_MN1LzfE0rZzyc1w_anMMfV60;
+
+    const authArea = document.getElementById("auth");
+    const accountArea = document.getElementById("account");
+    const message = document.getElementById("message");
     const loginTab = document.getElementById("loginTab");
     const signupTab = document.getElementById("signupTab");
     const submitButton = document.getElementById("submitButton");
-    const message = document.getElementById("message");
     let mode = "login";
 
-    function setMode(nextMode) {
-      mode = nextMode;
-      loginTab.classList.toggle("active", mode === "login");
-      signupTab.classList.toggle("active", mode === "signup");
-      submitButton.textContent = mode === "login" ? "Log in" : "Create account";
-      message.textContent = "";
+    if (!window.supabase ||
+        SUPABASE_URL.includes("PASTE_") ||
+        SUPABASE_KEY.includes("PASTE_")) {
+      message.textContent = "Setup needed: add your Supabase URL and Publishable key in the code.";
+    } else {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        loginTab.classList.toggle("active", mode === "login");
+        signupTab.classList.toggle("active", mode === "signup");
+        submitButton.textContent = mode === "login" ? "Log in" : "Create account";
+        message.textContent = "";
+      }
+
+      loginTab.addEventListener("click", () => setMode("login"));
+      signupTab.addEventListener("click", () => setMode("signup"));
+
+      document.getElementById("authForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        message.textContent = "Please wait...";
+        submitButton.disabled = true;
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        try {
+          if (mode === "signup") {
+            const { data, error } = await client.auth.signUp({ email, password });
+            if (error) throw error;
+            message.textContent = data.session
+              ? "Account created successfully!"
+              : "Account created. Check your email to confirm your address.";
+          } else {
+            const { error } = await client.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            message.textContent = "Logged in successfully!";
+          }
+        } catch (error) {
+          message.textContent = error.message || "Something went wrong. Please try again.";
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+
+      async function showAccount(user) {
+        if (user) {
+          authArea.style.display = "none";
+          accountArea.style.display = "block";
+          document.getElementById("userEmail").textContent = user.email || "";
+          message.textContent = "";
+        } else {
+          accountArea.style.display = "none";
+          authArea.style.display = "block";
+        }
+      }
+
+      document.getElementById("logout").addEventListener("click", async () => {
+        const { error } = await client.auth.signOut();
+        message.textContent = error ? error.message : "You have logged out.";
+      });
+
+      client.auth.getSession().then(({ data, error }) => {
+        if (error) message.textContent = error.message;
+        showAccount(data.session?.user || null);
+      });
+
+      client.auth.onAuthStateChange((_event, session) => {
+        showAccount(session?.user || null);
+      });
     }
-
-    loginTab.addEventListener("click", () => setMode("login"));
-    signupTab.addEventListener("click", () => setMode("signup"));
-
-    document.getElementById("authForm").addEventListener("submit", (event) => {
-      event.preventDefault();
-      message.textContent = "Website design ready. Account connection is our next step.";
-    });
   </script>
 </body>
 </html>
